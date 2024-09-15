@@ -1,4 +1,4 @@
-package m.somov.MySecondTestAppSpringBoot.controller;
+package m.somov.MyThirdTestAppSpringBoot.controller;
 
 import java.util.Date;
 
@@ -13,32 +13,28 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
-import m.somov.MySecondTestAppSpringBoot.exception.UnsupportedCodeException;
-import m.somov.MySecondTestAppSpringBoot.exception.ValidationFailedException;
-import m.somov.MySecondTestAppSpringBoot.model.Codes;
-import m.somov.MySecondTestAppSpringBoot.model.ErrorCodes;
-import m.somov.MySecondTestAppSpringBoot.model.ErrorMessages;
-import m.somov.MySecondTestAppSpringBoot.model.Request;
-import m.somov.MySecondTestAppSpringBoot.model.Response;
-import m.somov.MySecondTestAppSpringBoot.service.ModifyRequestService;
-import m.somov.MySecondTestAppSpringBoot.service.ModifyResponseService;
-import m.somov.MySecondTestAppSpringBoot.service.ValidationService;
-import m.somov.MySecondTestAppSpringBoot.util.DateTimeUtil;
+import m.somov.MyThirdTestAppSpringBoot.exception.UnsupportedCodeException;
+import m.somov.MyThirdTestAppSpringBoot.exception.ValidationFailedException;
+import m.somov.MyThirdTestAppSpringBoot.model.Codes;
+import m.somov.MyThirdTestAppSpringBoot.model.ErrorCodes;
+import m.somov.MyThirdTestAppSpringBoot.model.ErrorMessages;
+import m.somov.MyThirdTestAppSpringBoot.model.Request;
+import m.somov.MyThirdTestAppSpringBoot.model.Response;
+import m.somov.MyThirdTestAppSpringBoot.service.ModifyResponseService;
+import m.somov.MyThirdTestAppSpringBoot.service.ValidationService;
+import m.somov.MyThirdTestAppSpringBoot.util.DateTimeUtil;
 
 @Slf4j
 @RestController
 public class MyController {
   private final ValidationService validationService;
   private final ModifyResponseService modifyResponseService;
-  private final ModifyRequestService modifyRequestService;
 
   @Autowired
   public MyController(ValidationService validationService,
-      @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService,
-      @Qualifier("ModifySourceRequestService") ModifyRequestService modifyRequestService) {
+      @Qualifier("ModifySystemTimeResponseService") ModifyResponseService modifyResponseService) {
     this.validationService = validationService;
     this.modifyResponseService = modifyResponseService;
-    this.modifyRequestService = modifyRequestService;
   }
 
   @PostMapping("/feedback")
@@ -77,7 +73,6 @@ public class MyController {
     }
 
     modifyResponseService.modify(response);
-    modifyRequestService.modify(request);
     log.info("Final response: {}", response);
 
     return new ResponseEntity<>(response, HttpStatus.OK);
