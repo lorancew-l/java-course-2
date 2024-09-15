@@ -1,5 +1,6 @@
 package m.somov.MyThirdTestAppSpringBoot.controller;
 
+import java.text.ParseException;
 import java.util.Date;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,10 +42,19 @@ public class MyController {
   public ResponseEntity<Response> feedback(@Valid @RequestBody Request request, BindingResult bindingResult) {
     log.info("Request: {}", request);
 
+    var systemTime = DateTimeUtil.getCustomFormat().format(new Date());
+
+    try {
+      var systemTimeDiff = DateTimeUtil.getDateDifference(request.getSystemTime(), systemTime);
+      log.info("Time diff between requests: {}", systemTimeDiff);
+    } catch (ParseException e) {
+      log.error("systemTime parse exception \"{}\" occurred for request {}", e.getMessage(), request);
+    }
+
     var response = Response.builder()
         .uid(request.getUid())
         .operationUid(request.getOperationUid())
-        .systemTime(DateTimeUtil.getCustomFormat().format(new Date()))
+        .systemTime(systemTime)
         .code(Codes.SUCCESS)
         .errorCode(ErrorCodes.EMPTY)
         .errorMessage(ErrorMessages.EMPTY)
