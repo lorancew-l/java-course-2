@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
@@ -27,6 +28,7 @@ import m.somov.MySecondTestAppSpringBoot.util.DateTimeUtil;
 
 @Slf4j
 @RestController
+@RequestMapping("/feedback")
 public class MyController {
   private final ValidationService validationService;
   private final ModifyResponseService modifyResponseService;
@@ -41,11 +43,31 @@ public class MyController {
     this.modifyRequestService = modifyRequestService;
   }
 
-  @PostMapping("/feedback")
+  @PostMapping
   public ResponseEntity<Response> feedback(@Valid @RequestBody Request request, BindingResult bindingResult) {
     log.info("Request: {}", request);
 
-    var response = Response.builder()
+    Response response = buildInitialResponse(request);
+    log.info("Initial response: {}", response);
+
+    try {
+      validationService.isValid(bindingResult);
+      log.info("Validation passed for request: {}", request);
+    } catch (ValidationFailedException | UnsupportedCodeException e) {
+      return handleValidationException(e, bindingResult, request, response);
+    } catch (Exception e) {
+      return handleUnknownException(e, request, response);
+    }
+
+    modifyResponseService.modify(response);
+    modifyRequestService.modify(request);
+    log.info("Final response: {}", response);
+
+    return ResponseEntity.ok(response);
+  }
+
+  private Response buildInitialResponse(Request request) {
+    return Response.builder()
         .uid(request.getUid())
         .operationUid(request.getOperationUid())
         .systemTime(DateTimeUtil.getCustomFormat().format(new Date()))
@@ -53,33 +75,25 @@ public class MyController {
         .errorCode(ErrorCodes.EMPTY)
         .errorMessage(ErrorMessages.EMPTY)
         .build();
+  }
 
-    log.info("Initial response: {}", response);
+  private void setResponseError(Response response, ErrorCodes errorCode, ErrorMessages errorMessage) {
+    response.setCode(Codes.FAILED);
+    response.setErrorCode(errorCode);
+    response.setErrorMessage(errorMessage);
+  }
 
-    try {
-      validationService.isValid(bindingResult);
-      log.info("Validation passed for request: {}", request);
-    } catch (ValidationFailedException | UnsupportedCodeException e) {
-      bindingResult.getFieldErrors().forEach(error -> {
-        log.error("Validation error \"{}: {}\" occurred for request {}", error.getField(), error.getDefaultMessage(),
-            request);
-      });
-      response.setCode(Codes.FAILED);
-      response.setErrorCode(ErrorCodes.VALIDATION_EXCEPTION);
-      response.setErrorMessage(ErrorMessages.VALIDATION);
-      return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
-    } catch (Exception e) {
-      log.error("Unknown exception \"{}\" occurred for request {}", e.getMessage(), request);
-      response.setCode(Codes.FAILED);
-      response.setErrorCode(ErrorCodes.UNKNOWN_EXCEPTION);
-      response.setErrorMessage(ErrorMessages.UNKNOWN);
-      return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
-    }
+  private ResponseEntity<Response> handleValidationException(Exception e, BindingResult bindingResult,
+      Request request, Response response) {
+    bindingResult.getFieldErrors().forEach(error -> log.error("Validation error \"{}: {}\" occurred for request {}",
+        error.getField(), error.getDefaultMessage(), request));
+    setResponseError(response, ErrorCodes.VALIDATION_EXCEPTION, ErrorMessages.VALIDATION);
+    return new ResponseEntity<>(response, HttpStatus.BAD_REQUEST);
+  }
 
-    modifyResponseService.modify(response);
-    modifyRequestService.modify(request);
-    log.info("Final response: {}", response);
-
-    return new ResponseEntity<>(response, HttpStatus.OK);
+  private ResponseEntity<Response> handleUnknownException(Exception e, Request request, Response response) {
+    log.error("Unknown exception \"{}\" occurred for request {}", e.getMessage(), request);
+    setResponseError(response, ErrorCodes.UNKNOWN_EXCEPTION, ErrorMessages.UNKNOWN);
+    return new ResponseEntity<>(response, HttpStatus.INTERNAL_SERVER_ERROR);
   }
 }
